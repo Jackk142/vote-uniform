@@ -1,29 +1,75 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โหวตชุดแต่งกายประจำปี</title>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 16px; }
+    .container { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 24px 20px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+    h1 { color: #06C755; text-align: center; font-size: 24px; margin: 8px 0; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 16px; }
+    #user-info { background: #f1f3f5; border-radius: 10px; padding: 12px; text-align: center; font-weight: bold; margin-bottom: 16px; }
+    .vote-card { border: 3px solid #e9ecef; border-radius: 14px; padding: 10px; margin-bottom: 14px; cursor: pointer; transition: .2s; }
+    .vote-img { width: 100%; border-radius: 10px; display: block; }
+    #submit-btn { width: 100%; padding: 14px; font-size: 18px; border: none; border-radius: 12px; background: #06C755; color: #fff; font-weight: bold; }
+    #submit-btn:disabled { background: #ccc; }
+    #result { text-align: center; font-size: 18px; margin-top: 16px; font-weight: bold; }
+    #debug { color: red; font-size: 12px; white-space: pre-wrap; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎉 โหวตชุดแต่งกายประจำปี</h1>
+    <p class="subtitle">เลือกชุดที่คุณชื่นชอบที่สุดเพียง 1 สิทธิ์</p>
+    <div id="user-info">กำลังเชื่อมต่อระบบ LINE...</div>
+
+    <div id="vote-section">
+      <div id="options-container">
+        <p style="text-align:center;color:#999;">กำลังโหลดตัวเลือก...</p>
+      </div>
+      <button id="submit-btn" onclick="submitVote()" disabled>กรุณารอสักครู่...</button>
+    </div>
+
+    <div id="result"></div>
+    <div id="debug"></div>
+  </div>
+
 <script>
   const LIFF_ID = "2012082491-YpjwjBHz";
-  const API_URL = "https://script.google.com/macros/s/xxxxxxxx/exec"; // URL ของ Web App
+  const API_URL = "https://script.google.com/macros/s/AKfycbwUPpLTyPmEX79TLEoo0xwhYnVR8JKQrDN_CbFY_qC6DWvbuQ9A7zUpo4L_yB3cwCkZ/exec"; // ← ใส่ URL /exec ของ Apps Script
 
   let idToken = null;
   let selectedChoice = "";
   let liffReady = false;
   let optionsLoaded = false;
 
+  // แสดง error บนหน้าจอ (ดูง่ายบนมือถือ)
+  function showDebug(msg) {
+    document.getElementById("debug").innerText += "⚠️ " + msg + "\n";
+  }
+  window.onerror = (msg, src, line) => showDebug(msg + " (บรรทัด " + line + ")");
+
   window.onload = () => { initLiff(); loadOptions(); };
 
   async function initLiff() {
     try {
+      if (typeof liff === "undefined") throw new Error("โหลด LIFF SDK ไม่สำเร็จ");
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isLoggedIn()) {
         liff.login({ redirectUri: location.href });
         return;
       }
       idToken = liff.getIDToken();
-      if (!idToken) throw new Error("ไม่พบ ID Token (ตรวจว่าเปิด scope openid แล้ว)");
+      if (!idToken) throw new Error("ไม่พบ ID Token (ตรวจว่าติ๊ก scope openid แล้ว)");
       const profile = await liff.getProfile();
-      document.getElementById("user-info").innerText = `ผู้โหวต: ${profile.displayName}`;
+      document.getElementById("user-info").innerText = "ผู้โหวต: " + profile.displayName;
       liffReady = true;
       updateButton();
     } catch (err) {
-      document.getElementById("user-info").innerText = "❌ เชื่อมต่อ LINE ไม่สำเร็จ: " + err.message;
+      document.getElementById("user-info").innerText = "❌ เชื่อมต่อ LINE ไม่สำเร็จ";
+      showDebug("LIFF: " + err.message);
     }
   }
 
@@ -33,24 +79,28 @@
       const options = await res.json();
       const container = document.getElementById("options-container");
       container.innerHTML = "";
+      if (!options.length) {
+        container.innerHTML = "<p style='text-align:center;'>ยังไม่มีตัวเลือกในชีท Options</p>";
+        return;
+      }
       options.forEach(opt => {
         const card = document.createElement("div");
         card.className = "vote-card";
         card.onclick = () => selectCard(opt.name, card);
-        card.innerHTML = `
-          <img src="${opt.image}" class="vote-img" alt="${opt.name}">
-          <h3 style="margin:10px 0 0;font-size:16px;text-align:center;color:#333;">✨ ${opt.name}</h3>`;
+        card.innerHTML =
+          '<img src="' + opt.image + '" class="vote-img" alt="">' +
+          '<h3 style="margin:10px 0 0;font-size:16px;text-align:center;color:#333;">✨ ' + opt.name + '</h3>';
         container.appendChild(card);
       });
       optionsLoaded = true;
       updateButton();
     } catch (err) {
       document.getElementById("options-container").innerHTML =
-        "<p style='color:red;'>โหลดข้อมูลไม่สำเร็จ</p>";
+        "<p style='color:red;text-align:center;'>โหลดตัวเลือกไม่สำเร็จ</p>";
+      showDebug("Options: " + err.message);
     }
   }
 
-  // เปิดปุ่มเฉพาะเมื่อ LINE พร้อม และ ตัวเลือกโหลดเสร็จ
   function updateButton() {
     if (liffReady && optionsLoaded) {
       const btn = document.getElementById("submit-btn");
@@ -79,8 +129,8 @@
     try {
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" }, // เลี่ยงปัญหา CORS
-        body: JSON.stringify({ idToken, choice: selectedChoice })
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ idToken: idToken, choice: selectedChoice })
       });
       const data = await res.json();
       if (data.status === "success") {
@@ -90,8 +140,11 @@
         document.getElementById("vote-section").style.display = "block";
       }
     } catch (err) {
-      alert("เกิดข้อผิดพลาด: " + err.message);
+      document.getElementById("result").innerText = "";
       document.getElementById("vote-section").style.display = "block";
+      showDebug("Vote: " + err.message);
     }
   }
 </script>
+</body>
+</html>
