@@ -1,0 +1,97 @@
+<script>
+  const LIFF_ID = "2012082491-YpjwjBHz";
+  const API_URL = "https://script.google.com/macros/s/xxxxxxxx/exec"; // URL ของ Web App
+
+  let idToken = null;
+  let selectedChoice = "";
+  let liffReady = false;
+  let optionsLoaded = false;
+
+  window.onload = () => { initLiff(); loadOptions(); };
+
+  async function initLiff() {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href });
+        return;
+      }
+      idToken = liff.getIDToken();
+      if (!idToken) throw new Error("ไม่พบ ID Token (ตรวจว่าเปิด scope openid แล้ว)");
+      const profile = await liff.getProfile();
+      document.getElementById("user-info").innerText = `ผู้โหวต: ${profile.displayName}`;
+      liffReady = true;
+      updateButton();
+    } catch (err) {
+      document.getElementById("user-info").innerText = "❌ เชื่อมต่อ LINE ไม่สำเร็จ: " + err.message;
+    }
+  }
+
+  async function loadOptions() {
+    try {
+      const res = await fetch(API_URL + "?action=options");
+      const options = await res.json();
+      const container = document.getElementById("options-container");
+      container.innerHTML = "";
+      options.forEach(opt => {
+        const card = document.createElement("div");
+        card.className = "vote-card";
+        card.onclick = () => selectCard(opt.name, card);
+        card.innerHTML = `
+          <img src="${opt.image}" class="vote-img" alt="${opt.name}">
+          <h3 style="margin:10px 0 0;font-size:16px;text-align:center;color:#333;">✨ ${opt.name}</h3>`;
+        container.appendChild(card);
+      });
+      optionsLoaded = true;
+      updateButton();
+    } catch (err) {
+      document.getElementById("options-container").innerHTML =
+        "<p style='color:red;'>โหลดข้อมูลไม่สำเร็จ</p>";
+    }
+  }
+
+  // เปิดปุ่มเฉพาะเมื่อ LINE พร้อม และ ตัวเลือกโหลดเสร็จ
+  function updateButton() {
+    if (liffReady && optionsLoaded) {
+      const btn = document.getElementById("submit-btn");
+      btn.disabled = false;
+      btn.innerText = "ยืนยันการโหวต";
+    }
+  }
+
+  function selectCard(choiceName, element) {
+    selectedChoice = choiceName;
+    document.querySelectorAll(".vote-card").forEach(c => {
+      c.style.borderColor = "#e9ecef";
+      c.style.background = "#fff";
+    });
+    element.style.borderColor = "#06C755";
+    element.style.background = "#f4fbf7";
+  }
+
+  async function submitVote() {
+    if (!liffReady || !idToken) return alert("ยังเชื่อมต่อ LINE ไม่สำเร็จ กรุณาเปิดผ่านแอป LINE");
+    if (!selectedChoice) return alert("กรุณาเลือกชุดที่ต้องการโหวตก่อนครับ");
+
+    document.getElementById("vote-section").style.display = "none";
+    document.getElementById("result").innerText = "กำลังบันทึกคะแนน...";
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" }, // เลี่ยงปัญหา CORS
+        body: JSON.stringify({ idToken, choice: selectedChoice })
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        document.getElementById("result").innerText = "✅ " + data.message;
+      } else {
+        document.getElementById("result").innerText = "⚠️ " + data.message;
+        document.getElementById("vote-section").style.display = "block";
+      }
+    } catch (err) {
+      alert("เกิดข้อผิดพลาด: " + err.message);
+      document.getElementById("vote-section").style.display = "block";
+    }
+  }
+</script>
