@@ -2,65 +2,99 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>โหวตชุดแต่งกายประจำปี</title>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 16px; }
-    .container { max-width: 480px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 24px 20px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-    h1 { color: #06C755; text-align: center; font-size: 24px; margin: 8px 0; }
-    .subtitle { text-align: center; color: #666; margin-bottom: 16px; }
-    #user-info { background: #f1f3f5; border-radius: 10px; padding: 12px; text-align: center; font-weight: bold; margin-bottom: 16px; }
+
+    /* ความกว้างการ์ด: ใหญ่สุดเท่าที่จอให้ได้ โดยคงสัดส่วน 9:16
+       230px = พื้นที่เผื่อให้หัวเว็บ + จุด + ปุ่มโหวต */
+    :root { --card-w: max(180px, min(86vw, 412px, calc((100vh - 230px) * 9 / 16))); }
+    @supports (height: 100dvh) {
+      :root { --card-w: max(180px, min(86vw, 412px, calc((100dvh - 230px) * 9 / 16))); }
+    }
+
+    body { font-family: sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
+    .container {
+      max-width: 480px; min-height: 100vh; margin: 0 auto; background: #fff;
+      padding: 10px 12px 12px; display: flex; flex-direction: column;
+    }
+    @media (min-width: 520px) {
+      body { padding: 16px; }
+      .container { min-height: auto; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+    }
+    h1 { color: #06C755; text-align: center; font-size: 20px; margin: 2px 0 2px; }
+    .subtitle { text-align: center; color: #777; font-size: 13px; margin: 0 0 8px; }
+    #user-info {
+      background: #f1f3f5; border-radius: 10px; padding: 7px; text-align: center;
+      font-weight: bold; font-size: 14px; margin-bottom: 6px;
+    }
 
     /* ===== Carousel ===== */
-    .carousel-wrap { position: relative; margin: 0 -20px 8px; }
+    .carousel-wrap { position: relative; margin: 0 -12px; }
     .carousel {
       position: relative;
       display: flex;
-      gap: 12px;
+      gap: 10px;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
-      padding: 6px 9%;
+      padding: 6px calc((100% - var(--card-w)) / 2);
       scrollbar-width: none;
     }
     .carousel::-webkit-scrollbar { display: none; }
 
     .vote-card {
-      flex: 0 0 82%;
+      flex: 0 0 var(--card-w);
+      position: relative;
       scroll-snap-align: center;
-      border: 3px solid #e9ecef;
-      border-radius: 14px;
-      padding: 10px;
-      background: #fff;
+      border: 3px solid transparent;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #e9ecef;
       cursor: pointer;
       opacity: .45;
       transform: scale(.92);
-      transition: transform .25s, opacity .25s, border-color .25s, background .25s;
+      transition: transform .25s, opacity .25s, border-color .25s, box-shadow .25s;
     }
     .vote-card.active {
       border-color: #06C755;
-      background: #f4fbf7;
       opacity: 1;
       transform: scale(1);
-      box-shadow: 0 4px 14px rgba(6,199,85,.18);
+      box-shadow: 0 6px 18px rgba(6,199,85,.25);
     }
     .vote-img {
       width: 100%;
-      aspect-ratio: 3 / 4;
-      object-fit: contain;
-      background: #f1f3f5;
-      border-radius: 10px;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;   /* ถ้ารูปไม่ใช่ 9:16 พอดี และไม่อยากให้โดนตัดขอบ ให้เปลี่ยนเป็น contain */
       display: block;
+      background: #e9ecef;
     }
-    .vote-name { margin: 10px 0 0; font-size: 16px; text-align: center; color: #333; }
+    .vote-name {
+      position: absolute; left: 0; right: 0; bottom: 0; margin: 0;
+      padding: 48px 12px 14px;
+      color: #fff; font-size: 18px; text-align: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,.5);
+      background: linear-gradient(transparent, rgba(0,0,0,.75));
+    }
+    .vote-badge {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(0,0,0,.55); color: #fff;
+      font-size: 12px; padding: 3px 9px; border-radius: 20px;
+    }
+    .vote-card.active::after {
+      content: "✓ เลือกอยู่";
+      position: absolute; top: 10px; left: 10px;
+      background: #06C755; color: #fff; font-size: 12px; font-weight: bold;
+      padding: 3px 10px; border-radius: 20px;
+    }
 
     .nav-btn {
-      position: absolute; top: 45%; transform: translateY(-50%);
+      position: absolute; top: 50%; transform: translateY(-50%);
       width: 38px; height: 38px; border-radius: 50%;
       border: none; background: rgba(255,255,255,.95);
-      box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
       font-size: 22px; line-height: 38px; color: #06C755;
       cursor: pointer; z-index: 2; padding: 0;
     }
@@ -68,14 +102,17 @@
     #prev-btn { left: 6px; }
     #next-btn { right: 6px; }
 
-    .dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0 4px; flex-wrap: wrap; }
+    .dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0 10px; flex-wrap: wrap; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: #d0d5da; cursor: pointer; transition: .2s; }
     .dot.active { background: #06C755; width: 20px; border-radius: 4px; }
-    #counter { text-align: center; color: #888; font-size: 13px; margin-bottom: 14px; }
-    .swipe-hint { text-align: center; color: #aaa; font-size: 12px; margin: 0 0 6px; }
 
-    #submit-btn { width: 100%; padding: 14px; font-size: 18px; border: none; border-radius: 12px; background: #06C755; color: #fff; font-weight: bold; }
-    #submit-btn:disabled { background: #ccc; }
+    #submit-btn {
+      position: sticky; bottom: 10px;
+      width: 100%; padding: 14px; font-size: 18px; border: none; border-radius: 12px;
+      background: #06C755; color: #fff; font-weight: bold;
+      box-shadow: 0 4px 12px rgba(6,199,85,.3);
+    }
+    #submit-btn:disabled { background: #ccc; box-shadow: none; }
     #result { text-align: center; font-size: 18px; margin-top: 16px; font-weight: bold; }
     #debug { color: red; font-size: 12px; white-space: pre-wrap; margin-top: 10px; }
   </style>
@@ -83,7 +120,7 @@
 <body>
   <div class="container">
     <h1>🎉 โหวตชุดแต่งกายประจำปี</h1>
-    <p class="subtitle">เลือกชุดที่คุณชื่นชอบที่สุดเพียง 1 สิทธิ์</p>
+    <p class="subtitle">👈 ปัดซ้าย-ขวาเพื่อเลือกชุด แล้วกดโหวต (1 สิทธิ์) 👉</p>
     <div id="user-info">กำลังเชื่อมต่อระบบ LINE...</div>
 
     <div id="vote-section">
@@ -171,20 +208,19 @@
       cardsHtml +=
         '<div class="vote-card" data-index="' + i + '">' +
           '<img src="' + escapeHtml(opt.image) + '" class="vote-img" alt="" loading="lazy">' +
+          '<span class="vote-badge">' + (i + 1) + ' / ' + options.length + '</span>' +
           '<h3 class="vote-name">✨ ' + escapeHtml(opt.name) + '</h3>' +
         '</div>';
       dotsHtml += '<span class="dot" data-index="' + i + '"></span>';
     });
 
     container.innerHTML =
-      '<p class="swipe-hint">👈 ปัดซ้าย-ขวาเพื่อเลือกชุด 👉</p>' +
       '<div class="carousel-wrap">' +
         '<button class="nav-btn" id="prev-btn" aria-label="ก่อนหน้า">‹</button>' +
         '<div class="carousel" id="carousel">' + cardsHtml + '</div>' +
         '<button class="nav-btn" id="next-btn" aria-label="ถัดไป">›</button>' +
       '</div>' +
-      '<div class="dots" id="dots">' + dotsHtml + '</div>' +
-      '<div id="counter"></div>';
+      '<div class="dots" id="dots">' + dotsHtml + '</div>';
 
     const carousel = document.getElementById("carousel");
 
@@ -239,7 +275,6 @@
 
     document.querySelectorAll(".vote-card").forEach((c, i) => c.classList.toggle("active", i === index));
     document.querySelectorAll(".dot").forEach((d, i) => d.classList.toggle("active", i === index));
-    document.getElementById("counter").innerText = (index + 1) + " / " + optionsData.length;
     document.getElementById("prev-btn").disabled = index === 0;
     document.getElementById("next-btn").disabled = index === optionsData.length - 1;
 
