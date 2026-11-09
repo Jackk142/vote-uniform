@@ -164,11 +164,13 @@
   const LIFF_ID = "2012082491-YpjwjBHz";
   const API_URL = "https://script.google.com/macros/s/AKfycbwUPpLTyPmEX79TLEoo0xwhYnVR8JKQrDN_CbFY_qC6DWvbuQ9A7zUpo4L_yB3cwCkZ/exec";
 
+  // แยกระบบด้วย query string ของลิงก์ LIFF: ?vote=vote1 หรือ ?vote=vote2
+  let voteId = "vote1";
   let idToken = null;
   let liffReady = false;
   let optionsLoaded = false;
 
-  let categories = [];     // ชื่อรางวัล (มาจาก code.gs)
+  let categories = [];     // หัวข้อของกิจกรรม (มาจาก code.gs)
   let optionsData = [];    // ตัวเลือกชุด (ใช้ร่วมกันทุกรางวัล)
   let selections = [];     // index ของชุดที่เลือก แยกตามรางวัล
   let currentStep = 0;
@@ -181,12 +183,29 @@
   }
   window.onerror = (msg, src, line) => showDebug(msg + " (บรรทัด " + line + ")");
 
-  window.onload = () => { initLiff(); loadOptions(); };
+  window.onload = () => { initLiff(); };
+
+  function getVoteIdAfterInit() {
+    // LINE ย้าย query จาก LIFF URL ไปไว้ใน liff.state ระหว่าง primary redirect
+    // หลัง liff.init() เสร็จ parameter ควรถูกคืนค่าเป็น ?vote=...
+    const params = new URLSearchParams(location.search);
+    let value = params.get("vote");
+    if (!value && params.has("liff.state")) {
+      const state = params.get("liff.state") || "";
+      const stateParams = new URLSearchParams(state.replace(/^\/?\?/, ""));
+      value = stateParams.get("vote");
+    }
+    return value || "vote1";
+  }
 
   async function initLiff() {
     try {
       if (typeof liff === "undefined") throw new Error("โหลด LIFF SDK ไม่สำเร็จ");
       await liff.init({ liffId: LIFF_ID });
+      voteId = getVoteIdAfterInit();
+      if (voteId !== "vote1" && voteId !== "vote2") {
+        throw new Error("ไม่พบกิจกรรมโหวตนี้: " + voteId);
+      }
       if (!liff.isLoggedIn()) {
         liff.login({ redirectUri: location.href });
         return;
@@ -196,6 +215,7 @@
       const profile = await liff.getProfile();
       document.getElementById("user-info").innerText = "ผู้โหวต: " + profile.displayName;
       liffReady = true;
+      await loadOptions();
       updateSubmitButton();
     } catch (err) {
       document.getElementById("user-info").innerText = "❌ เชื่อมต่อ LINE ไม่สำเร็จ";
@@ -211,7 +231,7 @@
 
   async function loadOptions() {
     try {
-      const res = await fetch(API_URL + "?action=options");
+      const res = await fetch(API_URL + "?action=options&vote=" + encodeURIComponent(voteId));
       const data = await res.json();
       const container = document.getElementById("options-container");
 
@@ -410,7 +430,7 @@
       const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ idToken: idToken, choices: choices })
+        body: JSON.stringify({ idToken: idToken, vote: voteId, choices: choices })
       });
       const data = await res.json();
       if (data.status === "success") {
